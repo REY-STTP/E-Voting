@@ -11,22 +11,18 @@ export const useWallet = () => {
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState<boolean>(false);
 
   useEffect(() => {
-    // detect metaMask installation (try module helper first, fallback to window)
     (async () => {
       try {
         const mod = await import("@/lib/web3/wallet");
         if (mod?.WalletService && typeof mod.WalletService.isMetaMaskInstalled === "function") {
-          // WalletService.isMetaMaskInstalled is a synchronous helper
           try {
             const installed = mod.WalletService.isMetaMaskInstalled();
             setIsMetaMaskInstalled(Boolean(installed));
           } catch {
-            // fallback to window check
             const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
             setIsMetaMaskInstalled(Boolean(installed));
           }
         } else {
-          // fallback to window check
           const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
           setIsMetaMaskInstalled(Boolean(installed));
         }
@@ -35,11 +31,9 @@ export const useWallet = () => {
         setIsMetaMaskInstalled(Boolean(installed));
       }
 
-      // init session after detection
       initSession();
     })();
 
-    // Optional: subscribe to provider events here if needed
   }, []);
 
   const initSession = async () => {
@@ -79,10 +73,6 @@ export const useWallet = () => {
     }
   };
 
-  /**
-   * connectWallet uses dynamic import for WalletService (WalletConnect flow expected).
-   * If your wallet module exposes connectWithWalletConnect, it will be used.
-   */
   const connectWallet = async (): Promise<{ address: string; isAdmin: boolean }> => {
     const mod = await import("@/lib/web3/wallet");
     if (!mod?.WalletService || typeof mod.WalletService.connectWithWalletConnect !== "function") {
@@ -120,10 +110,8 @@ export const useWallet = () => {
   };
 
   const disconnectWallet = async () => {
-    // backend logout
     await fetch("/api/auth/logout", { method: "POST" });
 
-    // disconnect provider if exposed
     try {
       const mod = await import("@/lib/web3/wallet");
       if (mod?.WalletService && typeof mod.WalletService.disconnectWalletConnect === "function") {
@@ -145,7 +133,7 @@ export const useWallet = () => {
     hasVoted,
     isAdmin,
     isInitializing,
-    isMetaMaskInstalled, // <-- added back
+    isMetaMaskInstalled,
     connectWallet,
     disconnectWallet,
     checkWalletConnection,

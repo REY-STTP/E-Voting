@@ -158,9 +158,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Top stats */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Votes */}
           <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/40">
               <span className="text-2xl">📊</span>
@@ -178,7 +176,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Leading Candidate */}
           <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-green-100 dark:bg-emerald-900/40">
               <span className="text-2xl">{leader?.emoji ?? '🗳️'}</span>
@@ -209,7 +206,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Info network / admin status */}
           <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex flex-col justify-between">
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -224,16 +220,10 @@ export default function AdminPage() {
             </div>
             <div className="mt-4 text-xs text-emerald-700 dark:text-emerald-300">
               <p className="font-semibold">Admin Status: ACTIVE</p>
-              {hasVoted ? (
-                <p>Admin wallet sudah ikut memberikan suara.</p>
-              ) : (
-                <p>Admin wallet belum melakukan voting.</p>
-              )}
             </div>
           </div>
         </section>
 
-        {/* Detail per kandidat */}
         <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 md:p-8">
           <div className="flex justify-between items-center mb-6 gap-4">
             <div>
@@ -292,7 +282,6 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Info admin wallet */}
         <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 md:p-8">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-3">
             Admin Wallet

@@ -11,12 +11,10 @@ import {
 let wcProviderInstance: WalletConnectProvider | null = null;
 
 export class WalletService {
-  // optional helper (kept for compatibility)
   static isMetaMaskInstalled(): boolean {
     return typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
   }
 
-  // legacy/injected helper (kept if you still want to support injected providers)
   static async ensureSepoliaNetwork(): Promise<void> {
     if (typeof window === "undefined" || !(window as any).ethereum) return;
 
@@ -45,12 +43,7 @@ export class WalletService {
       throw err;
     }
   }
-
-  /**
-   * Connect using WalletConnect provider (v1 provider wrapper).
-   * Returns connected address (lowercased).
-   * Uses ethers v6 BrowserProvider which accepts an EIP-1193 provider.
-   */
+  
   static async connectWithWalletConnect(): Promise<string> {
     if (!wcProviderInstance) {
       wcProviderInstance = new WalletConnectProvider({
@@ -63,10 +56,8 @@ export class WalletService {
     }
 
     try {
-      // open QR (desktop) or deep link (mobile)
       await wcProviderInstance.enable();
 
-      // ethers v6: use BrowserProvider for EIP-1193 providers
       const web3Provider = new ethers.BrowserProvider(wcProviderInstance as any);
       const signer = await web3Provider.getSigner();
       const address = await signer.getAddress();
@@ -78,33 +69,25 @@ export class WalletService {
     }
   }
 
-  /**
-   * Disconnect / cleanup WalletConnect session if present.
-   */
   static async disconnectWalletConnect(): Promise<void> {
     try {
       if (!wcProviderInstance) return;
 
-      // try provider-specific disconnect/close
       try {
         await (wcProviderInstance as any).disconnect?.();
       } catch (e) {
-        // ignore
       }
       try {
         await (wcProviderInstance as any).close?.();
       } catch (e) {
-        // ignore
       }
 
-      // try kill session (connector)
       try {
         const connector = (wcProviderInstance as any).connector;
         if (connector && typeof connector.killSession === "function") {
           connector.killSession();
         }
       } catch (e) {
-        // ignore
       }
 
       wcProviderInstance = null;
@@ -113,7 +96,6 @@ export class WalletService {
     }
   }
 
-  // Optional: check injected provider accounts if needed
   static async checkConnectionInjected(): Promise<string[]> {
     if (typeof window === "undefined" || !(window as any).ethereum) return [];
     try {

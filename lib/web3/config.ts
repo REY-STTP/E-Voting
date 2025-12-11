@@ -1,6 +1,5 @@
 // lib/web3/config.ts
 
-// Ambil dari env dengan fallback default
 export const SEPOLIA_CHAIN_ID_DEC = Number(
   process.env.NEXT_PUBLIC_SEPOLIA_CHAIN_ID_DEC ?? '11155111'
 );
@@ -26,13 +25,16 @@ export const SEPOLIA_PARAMS = {
   blockExplorerUrls: [SEPOLIA_EXPLORER_URL],
 };
 
-// CONTRACT ADDRESS dari env (fallback ke default)
 export const VOTING_CONTRACT_ADDRESS = (
   process.env.NEXT_PUBLIC_VOTING_CONTRACT_ADDRESS ??
   '0xee35Da4E3a9a734b0a5227c99E361c1fDF9B3E5B'
 ).toLowerCase();
 
-// ABI tetap hardcoded (tidak perlu di-env)
+export const ADMIN_ADDRESS = (
+  process.env.NEXT_PUBLIC_ADMIN_ADDRESS ??
+  '0x1d1afc2d015963017bed1de13e4ed6c3d3ed1618'
+).toLowerCase();
+
 export const VOTING_CONTRACT_ABI = [
   {
     inputs: [{ internalType: 'uint8', name: 'candidateId', type: 'uint8' }],
@@ -99,9 +101,3 @@ export const VOTING_CONTRACT_ABI = [
     type: 'event',
   },
 ];
-
-// Admin address juga dari env (fallback ke default)
-export const ADMIN_ADDRESS = (
-  process.env.NEXT_PUBLIC_ADMIN_ADDRESS ??
-  '0x1d1afc2d015963017bed1de13e4ed6c3d3ed1618'
-).toLowerCase();

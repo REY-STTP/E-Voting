@@ -5,7 +5,7 @@ import { Wallet, Vote, CheckCircle } from 'lucide-react';
 interface HowItWorksProps {
   isConnected: boolean;
   onStartVoting: () => void;
-  isAdmin?: boolean; // new prop
+  isAdmin?: boolean;
 }
 
 export const HowItWorks: React.FC<HowItWorksProps> = ({
