@@ -8,11 +8,38 @@ export const useWallet = () => {
   const [hasVoted, setHasVoted] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState<boolean>(false);
 
   useEffect(() => {
-    // init session on mount
-    initSession();
-    // Optional: subscribe to WalletConnect disconnect events if needed
+    // detect metaMask installation (try module helper first, fallback to window)
+    (async () => {
+      try {
+        const mod = await import("@/lib/web3/wallet");
+        if (mod?.WalletService && typeof mod.WalletService.isMetaMaskInstalled === "function") {
+          // WalletService.isMetaMaskInstalled is a synchronous helper
+          try {
+            const installed = mod.WalletService.isMetaMaskInstalled();
+            setIsMetaMaskInstalled(Boolean(installed));
+          } catch {
+            // fallback to window check
+            const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
+            setIsMetaMaskInstalled(Boolean(installed));
+          }
+        } else {
+          // fallback to window check
+          const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
+          setIsMetaMaskInstalled(Boolean(installed));
+        }
+      } catch (e) {
+        const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
+        setIsMetaMaskInstalled(Boolean(installed));
+      }
+
+      // init session after detection
+      initSession();
+    })();
+
+    // Optional: subscribe to provider events here if needed
   }, []);
 
   const initSession = async () => {
@@ -53,24 +80,17 @@ export const useWallet = () => {
   };
 
   /**
-   * connectWallet uses dynamic import for WalletService to avoid possible
-   * module-resolution / Turbopack caching issues.
+   * connectWallet uses dynamic import for WalletService (WalletConnect flow expected).
+   * If your wallet module exposes connectWithWalletConnect, it will be used.
    */
   const connectWallet = async (): Promise<{ address: string; isAdmin: boolean }> => {
-    // dynamic import the wallet module at call time
     const mod = await import("@/lib/web3/wallet");
-    // debug: show what we imported at runtime
-    // eslint-disable-next-line no-console
-    console.log("wallet module runtime:", mod);
-
     if (!mod?.WalletService || typeof mod.WalletService.connectWithWalletConnect !== "function") {
-      // helpful error message for debugging runtime mismatch
       throw new Error(
         "WalletService.connectWithWalletConnect tidak tersedia pada runtime. Pastikan lib/web3/wallet.ts mengekspor WalletService dengan static method connectWithWalletConnect."
       );
     }
 
-    // call the method
     const acc = await mod.WalletService.connectWithWalletConnect();
 
     const res = await fetch("/api/auth/login", {
@@ -100,14 +120,12 @@ export const useWallet = () => {
   };
 
   const disconnectWallet = async () => {
-    // call backend logout
+    // backend logout
     await fetch("/api/auth/logout", { method: "POST" });
 
-    // dynamic import and attempt disconnect (if provider exists)
+    // disconnect provider if exposed
     try {
       const mod = await import("@/lib/web3/wallet");
-      // eslint-disable-next-line no-console
-      console.log("wallet module (disconnect) runtime:", mod);
       if (mod?.WalletService && typeof mod.WalletService.disconnectWalletConnect === "function") {
         await mod.WalletService.disconnectWalletConnect();
       }
@@ -127,6 +145,7 @@ export const useWallet = () => {
     hasVoted,
     isAdmin,
     isInitializing,
+    isMetaMaskInstalled, // <-- added back
     connectWallet,
     disconnectWallet,
     checkWalletConnection,
