@@ -74,6 +74,7 @@ export default function LandingPage() {
       <Features />
       <HowItWorks
         isConnected={isConnected}
+        isAdmin={isAdmin}
         onStartVoting={handleStartVoting}
       />
 

@@ -5,11 +5,13 @@ import { Wallet, Vote, CheckCircle } from 'lucide-react';
 interface HowItWorksProps {
   isConnected: boolean;
   onStartVoting: () => void;
+  isAdmin?: boolean; // new prop
 }
 
 export const HowItWorks: React.FC<HowItWorksProps> = ({
   isConnected,
   onStartVoting,
+  isAdmin,
 }) => {
   const steps = [
     {
@@ -40,6 +42,12 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
     blue: 'from-blue-600 to-blue-400',
     green: 'from-green-600 to-green-400',
   };
+
+  const buttonText = !isConnected
+    ? 'Start Voting Now'
+    : isAdmin
+    ? 'Go to Dashboard'
+    : 'Go to Voting';
 
   return (
     <section
@@ -120,7 +128,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               shadow-2xl hover:scale-105
             "
           >
-            {isConnected ? 'Go to Voting' : 'Start Voting Now'}
+            {buttonText}
           </button>
         </div>
       </div>
