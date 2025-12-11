@@ -1,18 +1,23 @@
 // components/landing/HowItWorks.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Wallet, Vote, CheckCircle } from 'lucide-react';
+import { ConnectWalletModal } from '@/components/shared/ConnectWalletModal';
 
 interface HowItWorksProps {
   isConnected: boolean;
   onStartVoting: () => void;
   isAdmin?: boolean;
+  onConnect?: (walletId: string) => Promise<void>;
 }
 
 export const HowItWorks: React.FC<HowItWorksProps> = ({
   isConnected,
   onStartVoting,
   isAdmin,
+  onConnect,
 }) => {
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
   const steps = [
     {
       icon: Wallet,
@@ -43,6 +48,36 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
     green: 'from-green-600 to-green-400',
   };
 
+  const handleStartVotingClick = () => {
+    if (isConnected) {
+      onStartVoting();
+    } else {
+      setShowWalletModal(true);
+    }
+  };
+
+  const handleConnectWalletConnect = async () => {
+    if (onConnect) {
+      try {
+        await onConnect('walletconnect');
+        setShowWalletModal(false);
+      } catch (error) {
+        console.error('Failed to connect with WalletConnect:', error);
+      }
+    }
+  };
+
+  const handleConnectInjected = async (walletId: string) => {
+    if (onConnect) {
+      try {
+        await onConnect(walletId);
+        setShowWalletModal(false);
+      } catch (error) {
+        console.error(`Failed to connect with ${walletId}:`, error);
+      }
+    }
+  };
+
   const buttonText = !isConnected
     ? 'Start Voting Now'
     : isAdmin
@@ -50,88 +85,105 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
     : 'Go to Voting';
 
   return (
-    <section
-      className="
-        container mx-auto px-4 py-20 my-20
-        bg-white/70 dark:bg-slate-900/70
-        rounded-3xl
-        border border-gray-100/80 dark:border-slate-800
-        shadow-lg dark:shadow-slate-950/40
-      "
-    >
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-slate-50 mb-4">
-            How It Works
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-slate-300">
-            3 langkah mudah untuk melakukan voting
-          </p>
-        </div>
+    <>
+      <section
+        className="
+          container mx-auto px-4 py-20 my-20
+          bg-white/70 dark:bg-slate-900/70
+          rounded-3xl
+          border border-gray-100/80 dark:border-slate-800
+          shadow-lg dark:shadow-slate-950/40
+        "
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-slate-50 mb-4">
+              How It Works
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300">
+              3 langkah mudah untuk melakukan voting
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 via-blue-600 to-green-600 transform -translate-y-1/2 z-0 opacity-70 dark:opacity-90"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 via-blue-600 to-green-600 transform -translate-y-1/2 z-0 opacity-70 dark:opacity-90"></div>
 
-          {steps.map((step, index) => (
-            <div key={index} className="relative z-10">
-              <div
-                className="
-                  rounded-2xl p-8 
-                  bg-white/90 dark:bg-slate-900
-                  border border-gray-100/80 dark:border-slate-800
-                  shadow-xl dark:shadow-slate-950/40
-                  hover:shadow-2xl hover:-translate-y-2
-                  transition-all
-                "
-              >
+            {steps.map((step, index) => (
+              <div key={index} className="relative z-10">
                 <div
-                  className={`
-                    absolute -top-6 -right-6 w-16 h-16 rounded-full
-                    bg-gradient-to-br ${colorClasses[step.color as keyof typeof colorClasses]}
-                    text-white font-bold text-2xl
-                    flex items-center justify-center
-                    shadow-lg
-                  `}
+                  className="
+                    rounded-2xl p-8 
+                    bg-white/90 dark:bg-slate-900
+                    border border-gray-100/80 dark:border-slate-800
+                    shadow-xl dark:shadow-slate-950/40
+                    hover:shadow-2xl hover:-translate-y-2
+                    transition-all
+                  "
                 >
-                  {step.number}
+                  <div
+                    className={`
+                      absolute -top-6 -right-6 w-16 h-16 rounded-full
+                      bg-gradient-to-br ${colorClasses[step.color as keyof typeof colorClasses]}
+                      text-white font-bold text-2xl
+                      flex items-center justify-center
+                      shadow-lg
+                    `}
+                  >
+                    {step.number}
+                  </div>
+                  <div
+                    className={`
+                      w-16 h-16 rounded-xl mb-6
+                      bg-gradient-to-br ${colorClasses[step.color as keyof typeof colorClasses]}
+                      flex items-center justify-center
+                    `}
+                  >
+                    <step.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-50 mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-slate-300">
+                    {step.description}
+                  </p>
                 </div>
-                <div
-                  className={`
-                    w-16 h-16 rounded-xl mb-6
-                    bg-gradient-to-br ${colorClasses[step.color as keyof typeof colorClasses]}
-                    flex items-center justify-center
-                  `}
-                >
-                  <step.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-50 mb-3">
-                  {step.title}
-                </h3>
-                <p className="text-gray-600 dark:text-slate-300">
-                  {step.description}
-                </p>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="text-center mt-16">
-          <p className="text-gray-600 dark:text-slate-300 mb-6">
-            Ready to make your voice heard?
-          </p>
-          <button
-            onClick={onStartVoting}
-            className="
-              bg-gradient-to-r from-purple-600 to-blue-600
-              text-white px-8 py-4 rounded-xl font-semibold text-lg
-              hover:from-purple-700 hover:to-blue-700 transition-all
-              shadow-2xl hover:scale-105
-            "
-          >
-            {buttonText}
-          </button>
+          <div className="text-center mt-16">
+            <p className="text-gray-600 dark:text-slate-300 mb-6">
+              Ready to make your voice heard?
+            </p>
+            <button
+              onClick={handleStartVotingClick}
+              className="
+                bg-gradient-to-r from-purple-600 to-blue-600
+                text-white px-8 py-4 rounded-xl font-semibold text-lg
+                hover:from-purple-700 hover:to-blue-700 transition-all
+                shadow-2xl hover:scale-105
+                disabled:opacity-50 disabled:cursor-not-allowed
+                disabled:hover:scale-100 disabled:hover:shadow-2xl
+              "
+            >
+              {buttonText}
+            </button>
+            
+            {!isConnected && (
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-4">
+                Connect wallet terlebih dahulu untuk mulai voting
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <ConnectWalletModal
+        open={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onConnectWalletConnect={handleConnectWalletConnect}
+        onConnectInjected={handleConnectInjected}
+      />
+    </>
   );
 };

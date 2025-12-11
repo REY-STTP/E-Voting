@@ -85,7 +85,7 @@ export default function AdminPage() {
     showToast({
       type: 'success',
       title: 'Admin mode',
-      message: 'Anda masuk sebagai admin..',
+      message: 'Anda masuk sebagai admin.',
     });
   }, [
     isInitializing,

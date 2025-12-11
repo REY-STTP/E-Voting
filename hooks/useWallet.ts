@@ -37,9 +37,16 @@ export const useWallet = () => {
 
   }, []);
 
-  const initSession = async () => {
+  const initSession = async (retryCount = 0) => {
     try {
-      const res = await fetch("/api/auth/session");
+      const res = await fetch("/api/auth/session", {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
       const data = await res.json();
 
       if (data?.address) {
@@ -53,6 +60,17 @@ export const useWallet = () => {
           console.error("Error checking hasVoted from session:", err);
           setHasVoted(false);
         }
+      } else {
+        setAccount("");
+        setIsConnected(false);
+        setHasVoted(false);
+        setIsAdmin(false);
+      }
+    } catch (err) {
+      console.error("Error initializing session:", err);
+      
+      if (retryCount < 3) {
+        setTimeout(() => initSession(retryCount + 1), 1000 * (retryCount + 1));
       } else {
         setAccount("");
         setIsConnected(false);
@@ -158,6 +176,30 @@ export const useWallet = () => {
     }
   };
 
+  const forceRefreshSession = async () => {
+    try {
+      const res = await fetch("/api/auth/session", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      const data = await res.json();
+      
+      if (!data?.address) {
+        setAccount("");
+        setIsConnected(false);
+        setIsAdmin(false);
+        setHasVoted(false);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Error refreshing session:", error);
+      return false;
+    }
+  };
+
   return {
     account,
     isConnected,
@@ -170,5 +212,6 @@ export const useWallet = () => {
     disconnectWallet,
     checkWalletConnection,
     clearNetworkError: () => setNetworkError(""),
+    forceRefreshSession,
   };
 };

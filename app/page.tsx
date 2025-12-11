@@ -1,6 +1,7 @@
 // app/page.tsx
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hero } from '@/components/landing/Hero';
 import { Features } from '@/components/landing/Features';
@@ -18,9 +19,16 @@ export default function LandingPage() {
     networkError,
     connectWallet, 
     disconnectWallet,
-    clearNetworkError 
+    clearNetworkError,
+    isInitializing
   } = useWallet();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!isInitializing && !isConnected && account) {
+      window.location.reload();
+    }
+  }, [isInitializing, isConnected, account]);
 
   const goToDashboardByRole = (isAdminFlag?: boolean) => {
     const admin = typeof isAdminFlag === 'boolean' ? isAdminFlag : isAdmin;
@@ -76,12 +84,15 @@ export default function LandingPage() {
   };
 
   const handleDisconnect = () => {
-    disconnectWallet();
+    disconnectWallet(false);
     showToast({
       type: 'info',
       title: 'Disconnected',
       message: 'Wallet berhasil diputus dari DApp.',
     });
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   return (
@@ -119,6 +130,7 @@ export default function LandingPage() {
         isConnected={isConnected}
         isAdmin={isAdmin}
         onStartVoting={handleStartVoting}
+        onConnect={handleConnect}
       />
 
       <footer className="bg-white dark:bg-slate-900 py-8 border-t border-gray-200 dark:border-slate-800 mt-20">
