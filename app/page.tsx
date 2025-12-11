@@ -29,7 +29,7 @@ export default function LandingPage() {
       showToast({
         type: 'success',
         title: 'Wallet terhubung',
-        message: 'MetaMask berhasil terhubung ke DApp.',
+        message: 'Wallet berhasil terhubung melalui WalletConnect.',
       });
       goToDashboardByRole(result.isAdmin);
     } catch (error: any) {
@@ -40,7 +40,7 @@ export default function LandingPage() {
         title: 'Gagal menghubungkan wallet',
         message:
           error?.message ??
-          'Gagal menghubungkan wallet. Pastikan MetaMask sudah terinstall dan diizinkan.',
+          'Gagal menghubungkan wallet. Coba pilih WalletConnect atau buka aplikasi wallet Anda.',
       });
     }
   };

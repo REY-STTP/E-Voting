@@ -1,87 +1,128 @@
 // lib/web3/wallet.ts
-import { SEPOLIA_CHAIN_ID_HEX, SEPOLIA_PARAMS } from './config';
+import WalletConnectProvider from "@walletconnect/web3-provider";
+import { ethers } from "ethers";
+import {
+  SEPOLIA_CHAIN_ID_DEC,
+  SEPOLIA_CHAIN_ID_HEX,
+  SEPOLIA_PARAMS,
+  SEPOLIA_RPC_URL,
+} from "./config";
+
+let wcProviderInstance: WalletConnectProvider | null = null;
 
 export class WalletService {
+  // optional helper (kept for compatibility)
   static isMetaMaskInstalled(): boolean {
-    return typeof window !== 'undefined' && !!window.ethereum;
+    return typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
   }
 
+  // legacy/injected helper (kept if you still want to support injected providers)
   static async ensureSepoliaNetwork(): Promise<void> {
-    if (typeof window === 'undefined' || !window.ethereum) return;
+    if (typeof window === "undefined" || !(window as any).ethereum) return;
 
     try {
-      const chainId = await window.ethereum.request({
-        method: 'eth_chainId',
-      });
-
+      const chainId = await (window as any).ethereum.request({ method: "eth_chainId" });
       if (chainId === SEPOLIA_CHAIN_ID_HEX) return;
 
       try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
+        await (window as any).ethereum.request({
+          method: "wallet_switchEthereumChain",
           params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
         });
       } catch (error: any) {
         if (error?.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
+          await (window as any).ethereum.request({
+            method: "wallet_addEthereumChain",
             params: [SEPOLIA_PARAMS],
           });
         } else {
-          console.error('Failed to switch network:', error);
+          console.error("Failed to switch network:", error);
           throw error;
         }
       }
     } catch (err) {
-      console.error('Error ensuring Sepolia network:', err);
+      console.error("Error ensuring Sepolia network:", err);
       throw err;
     }
   }
 
-  static async checkConnection(): Promise<string[]> {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      return [];
+  /**
+   * Connect using WalletConnect provider (v1 provider wrapper).
+   * Returns connected address (lowercased).
+   * Uses ethers v6 BrowserProvider which accepts an EIP-1193 provider.
+   */
+  static async connectWithWalletConnect(): Promise<string> {
+    if (!wcProviderInstance) {
+      wcProviderInstance = new WalletConnectProvider({
+        rpc: {
+          [SEPOLIA_CHAIN_ID_DEC]: SEPOLIA_RPC_URL,
+        },
+        chainId: SEPOLIA_CHAIN_ID_DEC,
+        qrcode: true,
+      });
     }
 
     try {
-      await this.ensureSepoliaNetwork();
+      // open QR (desktop) or deep link (mobile)
+      await wcProviderInstance.enable();
 
-      const accounts = await window.ethereum.request({
-        method: 'eth_accounts',
-      });
-      return accounts as string[];
-    } catch (error) {
-      console.error('Error checking wallet:', error);
-      return [];
+      // ethers v6: use BrowserProvider for EIP-1193 providers
+      const web3Provider = new ethers.BrowserProvider(wcProviderInstance as any);
+      const signer = await web3Provider.getSigner();
+      const address = await signer.getAddress();
+
+      return address.toLowerCase();
+    } catch (err) {
+      console.error("WalletConnect connection failed:", err);
+      throw new Error("Gagal menghubungkan wallet lewat WalletConnect.");
     }
   }
 
-  static async connect(): Promise<string> {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      throw new Error(
-        'MetaMask tidak terdeteksi. Silakan install MetaMask terlebih dahulu.'
-      );
-    }
-
+  /**
+   * Disconnect / cleanup WalletConnect session if present.
+   */
+  static async disconnectWalletConnect(): Promise<void> {
     try {
-      await this.ensureSepoliaNetwork();
+      if (!wcProviderInstance) return;
 
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-
-      const acc = (accounts as string[])[0];
-
-      if (!acc) {
-        throw new Error('Tidak ada akun yang ditemukan di MetaMask.');
+      // try provider-specific disconnect/close
+      try {
+        await (wcProviderInstance as any).disconnect?.();
+      } catch (e) {
+        // ignore
+      }
+      try {
+        await (wcProviderInstance as any).close?.();
+      } catch (e) {
+        // ignore
       }
 
-      return acc;
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      throw new Error(
-        'Gagal menghubungkan wallet. Pastikan MetaMask terinstall dan diizinkan.'
-      );
+      // try kill session (connector)
+      try {
+        const connector = (wcProviderInstance as any).connector;
+        if (connector && typeof connector.killSession === "function") {
+          connector.killSession();
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      wcProviderInstance = null;
+    } catch (err) {
+      console.error("Error disconnecting WalletConnect:", err);
+    }
+  }
+
+  // Optional: check injected provider accounts if needed
+  static async checkConnectionInjected(): Promise<string[]> {
+    if (typeof window === "undefined" || !(window as any).ethereum) return [];
+    try {
+      await this.ensureSepoliaNetwork();
+      const accounts = await (window as any).ethereum.request({ method: "eth_accounts" });
+      return accounts as string[];
+    } catch (err) {
+      console.error("Error checking injected wallet:", err);
+      return [];
     }
   }
 }
