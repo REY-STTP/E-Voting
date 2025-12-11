@@ -1,7 +1,7 @@
 // app/voting/page.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/voting/Header';
 import { StatsCards } from '@/components/voting/StatsCards';
@@ -19,6 +19,8 @@ export default function VotingPage() {
   const router = useRouter();
   const { confirm } = useConfirmDialog();
   const { showToast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const {
     account,
     isConnected,
@@ -101,14 +103,32 @@ export default function VotingPage() {
   };
 
   const handleDisconnect = async () => {
-    await disconnectWallet();
-    showToast({
-      type: 'info',
-      title: 'Disconnected',
-      message: 'Wallet berhasil diputus dari DApp.',
-    });
-    // Langsung redirect ke landing page setelah disconnect
-    router.push('/');
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    try {
+      await disconnectWallet(false);
+      
+      showToast({
+        type: 'info',
+        title: 'Disconnected',
+        message: 'Wallet berhasil diputus dari DApp.',
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      router.push('/');
+      
+    } catch (error) {
+      console.error('Error during logout:', error);
+      showToast({
+        type: 'error',
+        title: 'Logout gagal',
+        message: 'Terjadi kesalahan saat logout.',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   if (isInitializing || isLoading) {

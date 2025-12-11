@@ -8,7 +8,7 @@ export const SEPOLIA_CHAIN_ID_HEX =
   process.env.NEXT_PUBLIC_SEPOLIA_CHAIN_ID_HEX ?? '0xaa36a7';
 
 export const SEPOLIA_RPC_URL =
-  process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ?? 'https://rpc.sepolia.org';
+  process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
 
 export const SEPOLIA_EXPLORER_URL =
   process.env.NEXT_PUBLIC_SEPOLIA_EXPLORER_URL ?? 'https://sepolia.etherscan.io';

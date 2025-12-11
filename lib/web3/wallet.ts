@@ -6,6 +6,7 @@ import {
   SEPOLIA_CHAIN_ID_HEX,
   SEPOLIA_PARAMS,
   SEPOLIA_RPC_URL,
+  SEPOLIA_EXPLORER_URL
 } from "./config";
 
 let wcProviderInstance: WalletConnectProvider | null = null;
@@ -15,35 +16,75 @@ export class WalletService {
     return typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
   }
 
-  static async ensureSepoliaNetwork(): Promise<void> {
-    if (typeof window === "undefined" || !(window as any).ethereum) return;
+  static async ensureSepoliaNetwork(provider?: any): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    
+    const ethereum = provider || (window as any).ethereum;
+    if (!ethereum) return false;
 
     try {
-      const chainId = await (window as any).ethereum.request({ method: "eth_chainId" });
-      if (chainId === SEPOLIA_CHAIN_ID_HEX) return;
+      const chainId = await ethereum.request({ method: "eth_chainId" });
+      
+      if (chainId === SEPOLIA_CHAIN_ID_HEX) {
+        console.log("Already on Sepolia network");
+        return true;
+      }
 
+      console.log(`Current chain: ${chainId}, switching to Sepolia...`);
+      
       try {
-        await (window as any).ethereum.request({
+        await ethereum.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
         });
-      } catch (error: any) {
-        if (error?.code === 4902) {
-          await (window as any).ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [SEPOLIA_PARAMS],
-          });
+        console.log("Successfully switched to Sepolia");
+        return true;
+      } catch (switchError: any) {
+        console.log("Switch error:", switchError);
+        
+        if (switchError.code === 4902 || switchError.code === -32603) {
+          console.log("Adding Sepolia network to wallet...");
+          
+          try {
+            await ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [SEPOLIA_PARAMS],
+            });
+            
+            await ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
+            });
+            
+            console.log("Successfully added and switched to Sepolia");
+            return true;
+          } catch (addError: any) {
+            console.error("Failed to add Sepolia network:", addError);
+            
+            throw new Error(
+              `Failed to add Sepolia network to your wallet. ` +
+              `Please add it manually:\n` +
+              `Network Name: Sepolia Test Network\n` +
+              `RPC URL: ${SEPOLIA_RPC_URL}\n` +
+              `Chain ID: ${SEPOLIA_CHAIN_ID_DEC} (0x${SEPOLIA_CHAIN_ID_DEC.toString(16)})\n` +
+              `Currency Symbol: ETH\n` +
+              `Block Explorer: ${SEPOLIA_EXPLORER_URL[0]}`
+            );
+          }
         } else {
-          console.error("Failed to switch network:", error);
-          throw error;
+          console.error("Failed to switch network:", switchError);
+          throw new Error(
+            `Failed to switch to Sepolia network. ` +
+            `Please switch manually in your wallet. Error: ${switchError.message}`
+          );
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error ensuring Sepolia network:", err);
       throw err;
     }
   }
-  
+
   static async connectWithWalletConnect(): Promise<string> {
     if (!wcProviderInstance) {
       wcProviderInstance = new WalletConnectProvider({
@@ -76,7 +117,6 @@ export class WalletService {
 
     let provider: any = null;
 
-    // Detect wallet based on walletId
     switch (walletId) {
       case 'metamask':
         if ((window as any).ethereum && (window as any).ethereum.isMetaMask) {
@@ -85,9 +125,10 @@ export class WalletService {
         break;
       case 'phantom':
         if ((window as any).solana && (window as any).solana.isPhantom) {
-          // For Phantom on Ethereum, check if it has ethereum provider
           if ((window as any).phantom && (window as any).phantom.ethereum) {
             provider = (window as any).phantom.ethereum;
+          } else if ((window as any).ethereum) {
+            provider = (window as any).ethereum;
           }
         }
         break;
@@ -97,7 +138,6 @@ export class WalletService {
         }
         break;
       default:
-        // Try default ethereum provider
         if ((window as any).ethereum) {
           provider = (window as any).ethereum;
         }
@@ -108,11 +148,11 @@ export class WalletService {
     }
 
     try {
-      // Ensure we're on Sepolia network
-      await this.ensureSepoliaNetwork();
+      await this.ensureSepoliaNetwork(provider);
 
-      // Request accounts
-      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      const accounts = await provider.request({ 
+        method: "eth_requestAccounts" 
+      });
       
       if (!accounts || accounts.length === 0) {
         throw new Error("Tidak ada akun yang ditemukan.");
@@ -124,6 +164,10 @@ export class WalletService {
       
       if (err.code === 4001) {
         throw new Error("Koneksi ditolak oleh pengguna.");
+      }
+      
+      if (err.message.includes("Failed to add Sepolia network")) {
+        throw err;
       }
       
       throw new Error(err.message || `Gagal menghubungkan ke ${walletId}.`);

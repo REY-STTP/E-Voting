@@ -7,11 +7,19 @@ import { Features } from '@/components/landing/Features';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { useWallet } from '@/hooks/useWallet';
 import { useToast } from '@/components/ui/ToastProvider';
+import { AlertTriangle } from 'lucide-react';
 
 export default function LandingPage() {
   const router = useRouter();
-  const { account, isConnected, isAdmin, connectWallet, disconnectWallet } =
-    useWallet();
+  const { 
+    account, 
+    isConnected, 
+    isAdmin, 
+    networkError,
+    connectWallet, 
+    disconnectWallet,
+    clearNetworkError 
+  } = useWallet();
   const { showToast } = useToast();
 
   const goToDashboardByRole = (isAdminFlag?: boolean) => {
@@ -25,6 +33,7 @@ export default function LandingPage() {
 
   const handleConnect = async (walletId: string) => {
     try {
+      clearNetworkError();
       const result = await connectWallet(walletId);
       
       const walletName = walletId === 'walletconnect' 
@@ -40,13 +49,22 @@ export default function LandingPage() {
     } catch (error: any) {
       console.error('Failed to connect wallet:', error);
       
-      showToast({
-        type: 'warning',
-        title: 'Gagal menghubungkan wallet',
-        message:
-          error?.message ??
-          'Gagal menghubungkan wallet. Pastikan wallet Anda sudah terinstall atau coba gunakan WalletConnect.',
-      });
+      if (networkError) {
+        showToast({
+          type: 'error',
+          title: 'Masalah Jaringan Sepolia',
+          message: networkError,
+          duration: 10000,
+        });
+      } else {
+        showToast({
+          type: 'warning',
+          title: 'Gagal menghubungkan wallet',
+          message:
+            error?.message ??
+            'Gagal menghubungkan wallet. Pastikan wallet Anda sudah terinstall atau coba gunakan WalletConnect.',
+        });
+      }
     }
   };
 
@@ -55,9 +73,6 @@ export default function LandingPage() {
       goToDashboardByRole();
       return;
     }
-
-    // Trigger wallet button click (will show modal)
-    // User needs to click wallet button manually
   };
 
   const handleDisconnect = () => {
@@ -71,6 +86,28 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+      {networkError && (
+        <div className="container mx-auto px-4 py-4">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                Perhatian: Masalah Jaringan Sepolia
+              </p>
+              <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1 whitespace-pre-line">
+                {networkError}
+              </p>
+            </div>
+            <button 
+              onClick={clearNetworkError}
+              className="text-yellow-700 dark:text-yellow-300 hover:text-yellow-800 dark:hover:text-yellow-200 text-sm"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
       <Hero
         isConnected={isConnected}
         account={account}
@@ -89,6 +126,9 @@ export default function LandingPage() {
           <p className="mb-2">🔒 Powered by Web3 Technology</p>
           <p className="text-sm">
             Secure, Transparent &amp; Decentralized Voting System
+          </p>
+          <p className="text-xs mt-2 text-gray-500 dark:text-slate-500">
+            Network: Sepolia Testnet - Chain ID: 11155111
           </p>
         </div>
       </footer>

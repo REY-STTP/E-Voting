@@ -1,6 +1,7 @@
 // hooks/useWallet.ts
 import { useEffect, useState } from "react";
 import { VotingService } from "@/lib/web3/voting";
+import { WalletService } from "@/lib/web3/wallet";
 
 export const useWallet = () => {
   const [account, setAccount] = useState<string>("");
@@ -9,14 +10,14 @@ export const useWallet = () => {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState<boolean>(false);
+  const [networkError, setNetworkError] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       try {
-        const mod = await import("@/lib/web3/wallet");
-        if (mod?.WalletService && typeof mod.WalletService.isMetaMaskInstalled === "function") {
+        if (WalletService && typeof WalletService.isMetaMaskInstalled === "function") {
           try {
-            const installed = mod.WalletService.isMetaMaskInstalled();
+            const installed = WalletService.isMetaMaskInstalled();
             setIsMetaMaskInstalled(Boolean(installed));
           } catch {
             const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
@@ -74,24 +75,32 @@ export const useWallet = () => {
   };
 
   const connectWallet = async (walletId: string): Promise<{ address: string; isAdmin: boolean }> => {
+    setNetworkError("");
+    
     const mod = await import("@/lib/web3/wallet");
-    if (!mod?.WalletService) {
+    if (!WalletService) {
       throw new Error("WalletService tidak tersedia.");
     }
 
     let acc: string;
 
-    if (walletId === 'walletconnect') {
-      if (typeof mod.WalletService.connectWithWalletConnect !== "function") {
-        throw new Error("WalletConnect tidak tersedia.");
+    try {
+      if (walletId === 'walletconnect') {
+        if (typeof WalletService.connectWithWalletConnect !== "function") {
+          throw new Error("WalletConnect tidak tersedia.");
+        }
+        acc = await WalletService.connectWithWalletConnect();
+      } else {
+        if (typeof WalletService.connectInjected !== "function") {
+          throw new Error("Injected wallet connection tidak tersedia.");
+        }
+        acc = await WalletService.connectInjected(walletId);
       }
-      acc = await mod.WalletService.connectWithWalletConnect();
-    } else {
-      // Injected wallet (MetaMask, Phantom, OKX, etc.)
-      if (typeof mod.WalletService.connectInjected !== "function") {
-        throw new Error("Injected wallet connection tidak tersedia.");
+    } catch (error: any) {
+      if (error.message.includes("Sepolia network")) {
+        setNetworkError(error.message);
       }
-      acc = await mod.WalletService.connectInjected(walletId);
+      throw error;
     }
 
     const res = await fetch("/api/auth/login", {
@@ -120,23 +129,32 @@ export const useWallet = () => {
     return { address: normalized, isAdmin: adminFlag };
   };
 
-  const disconnectWallet = async () => {
-    // Clear local state first
+  const disconnectWallet = async (shouldNavigate = false) => {
     setAccount("");
     setIsConnected(false);
     setHasVoted(false);
     setIsAdmin(false);
-
-    // Then logout from server
-    await fetch("/api/auth/logout", { method: "POST" });
+    setNetworkError("");
 
     try {
-      const mod = await import("@/lib/web3/wallet");
-      if (mod?.WalletService && typeof mod.WalletService.disconnectWalletConnect === "function") {
-        await mod.WalletService.disconnectWalletConnect();
+      await fetch("/api/auth/logout", { 
+        method: "POST",
+        credentials: 'include'
+      });
+    } catch (err) {
+      console.error("Error during logout API call:", err);
+    }
+
+    try {
+      if (WalletService && typeof WalletService.disconnectWalletConnect === "function") {
+        await WalletService.disconnectWalletConnect();
       }
     } catch (err) {
-      console.error("Error disconnecting wallet provider (dynamic import):", err);
+      console.error("Error disconnecting wallet provider:", err);
+    }
+
+    if (shouldNavigate) {
+      return;
     }
   };
 
@@ -147,8 +165,10 @@ export const useWallet = () => {
     isAdmin,
     isInitializing,
     isMetaMaskInstalled,
+    networkError,
     connectWallet,
     disconnectWallet,
     checkWalletConnection,
+    clearNetworkError: () => setNetworkError(""),
   };
 };

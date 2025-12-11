@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 
@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 export default function AdminPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const {
     account,
@@ -84,7 +85,7 @@ export default function AdminPage() {
     showToast({
       type: 'success',
       title: 'Admin mode',
-      message: 'Anda masuk sebagai admin. Anda hanya memonitor, tidak bisa mengedit dari sini (demo).',
+      message: 'Anda masuk sebagai admin..',
     });
   }, [
     isInitializing,
@@ -96,13 +97,32 @@ export default function AdminPage() {
   ]);
 
   const handleDisconnect = async () => {
-    await disconnectWallet();
-    showToast({
-      type: 'info',
-      title: 'Disconnected',
-      message: 'Wallet berhasil diputus dari DApp.',
-    });
-    router.push('/');
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    try {
+      await disconnectWallet(false);
+      
+      showToast({
+        type: 'info',
+        title: 'Disconnected',
+        message: 'Wallet berhasil diputus dari DApp.',
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      router.push('/');
+      
+    } catch (error) {
+      console.error('Error during logout:', error);
+      showToast({
+        type: 'error',
+        title: 'Logout gagal',
+        message: 'Terjadi kesalahan saat logout.',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   if (isInitializing || isLoading) {
