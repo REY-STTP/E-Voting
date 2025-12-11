@@ -1,12 +1,13 @@
 // components/shared/WalletButton.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Wallet, LogOut } from 'lucide-react';
 import { CalculationUtils } from '@/lib/utils/calculations';
+import { ConnectWalletModal } from './ConnectWalletModal';
 
 interface WalletButtonProps {
   isConnected: boolean;
   account?: string;
-  onConnect?: () => void;
+  onConnect?: (walletId: string) => Promise<void>;
   onDisconnect?: () => void;
   variant?: 'primary' | 'outline';
 }
@@ -18,6 +19,8 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
   onDisconnect,
   variant = 'primary',
 }) => {
+  const [showModal, setShowModal] = useState(false);
+
   const label = isConnected
     ? CalculationUtils.formatAddress(account)
     : 'Connect Wallet';
@@ -26,8 +29,16 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
     if (isConnected) {
       onDisconnect?.();
     } else {
-      onConnect?.();
+      setShowModal(true);
     }
+  };
+
+  const handleConnectWalletConnect = async () => {
+    await onConnect?.('walletconnect');
+  };
+
+  const handleConnectInjected = async (walletId: string) => {
+    await onConnect?.(walletId);
   };
 
   const baseClasses =
@@ -36,16 +47,25 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
   const variantClasses =
     variant === 'primary'
       ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-purple-500/50 hover:scale-105'
-      : 'border-2 border-gray-300 text-gray-700 hover:border-purple-600 hover:text-purple-600 bg-white';
+      : 'border-2 border-gray-300 text-gray-700 hover:border-purple-600 hover:text-purple-600 bg-white dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600';
 
   return (
-    <button className={`${baseClasses} ${variantClasses}`} onClick={handleClick}>
-      {isConnected ? (
-        <LogOut className="w-4 h-4" />
-      ) : (
-        <Wallet className="w-4 h-4" />
-      )}
-      <span>{label}</span>
-    </button>
+    <>
+      <button className={`${baseClasses} ${variantClasses}`} onClick={handleClick}>
+        {isConnected ? (
+          <LogOut className="w-4 h-4" />
+        ) : (
+          <Wallet className="w-4 h-4" />
+        )}
+        <span>{label}</span>
+      </button>
+
+      <ConnectWalletModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        onConnectWalletConnect={handleConnectWalletConnect}
+        onConnectInjected={handleConnectInjected}
+      />
+    </>
   );
 };

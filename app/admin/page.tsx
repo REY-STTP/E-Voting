@@ -77,12 +77,7 @@ export default function AdminPage() {
     }
 
     if (!isAdmin) {
-      showToast({
-        type: 'error',
-        title: 'Akses ditolak',
-        message: 'Wallet Anda bukan admin. Dialihkan ke halaman voting.',
-      });
-      router.replace('/voting');
+      router.replace('/');
       return;
     }
 

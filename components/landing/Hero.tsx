@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 interface HeroProps {
   isConnected: boolean;
   account: string;
-  onConnect: () => void;
+  onConnect: (walletId: string) => Promise<void>;
   onDisconnect: () => void;
 }
 

@@ -23,13 +23,18 @@ export default function LandingPage() {
     }
   };
 
-  const handleConnect = async () => {
+  const handleConnect = async (walletId: string) => {
     try {
-      const result = await connectWallet();
+      const result = await connectWallet(walletId);
+      
+      const walletName = walletId === 'walletconnect' 
+        ? 'WalletConnect' 
+        : walletId.charAt(0).toUpperCase() + walletId.slice(1);
+      
       showToast({
         type: 'success',
         title: 'Wallet terhubung',
-        message: 'Wallet berhasil terhubung melalui WalletConnect.',
+        message: `Wallet berhasil terhubung melalui ${walletName}.`,
       });
       goToDashboardByRole(result.isAdmin);
     } catch (error: any) {
@@ -40,7 +45,7 @@ export default function LandingPage() {
         title: 'Gagal menghubungkan wallet',
         message:
           error?.message ??
-          'Gagal menghubungkan wallet. Coba pilih WalletConnect atau buka aplikasi wallet Anda.',
+          'Gagal menghubungkan wallet. Pastikan wallet Anda sudah terinstall atau coba gunakan WalletConnect.',
       });
     }
   };
@@ -51,7 +56,8 @@ export default function LandingPage() {
       return;
     }
 
-    await handleConnect();
+    // Trigger wallet button click (will show modal)
+    // User needs to click wallet button manually
   };
 
   const handleDisconnect = () => {

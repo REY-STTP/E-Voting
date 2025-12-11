@@ -69,6 +69,67 @@ export class WalletService {
     }
   }
 
+  static async connectInjected(walletId: string): Promise<string> {
+    if (typeof window === "undefined") {
+      throw new Error("Window object tidak tersedia.");
+    }
+
+    let provider: any = null;
+
+    // Detect wallet based on walletId
+    switch (walletId) {
+      case 'metamask':
+        if ((window as any).ethereum && (window as any).ethereum.isMetaMask) {
+          provider = (window as any).ethereum;
+        }
+        break;
+      case 'phantom':
+        if ((window as any).solana && (window as any).solana.isPhantom) {
+          // For Phantom on Ethereum, check if it has ethereum provider
+          if ((window as any).phantom && (window as any).phantom.ethereum) {
+            provider = (window as any).phantom.ethereum;
+          }
+        }
+        break;
+      case 'okx':
+        if ((window as any).okxwallet) {
+          provider = (window as any).okxwallet;
+        }
+        break;
+      default:
+        // Try default ethereum provider
+        if ((window as any).ethereum) {
+          provider = (window as any).ethereum;
+        }
+    }
+
+    if (!provider) {
+      throw new Error(`Wallet ${walletId} tidak terdeteksi. Pastikan wallet sudah terinstall.`);
+    }
+
+    try {
+      // Ensure we're on Sepolia network
+      await this.ensureSepoliaNetwork();
+
+      // Request accounts
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("Tidak ada akun yang ditemukan.");
+      }
+
+      return accounts[0].toLowerCase();
+    } catch (err: any) {
+      console.error(`Error connecting to ${walletId}:`, err);
+      
+      if (err.code === 4001) {
+        throw new Error("Koneksi ditolak oleh pengguna.");
+      }
+      
+      throw new Error(err.message || `Gagal menghubungkan ke ${walletId}.`);
+    }
+  }
+
   static async disconnectWalletConnect(): Promise<void> {
     try {
       if (!wcProviderInstance) return;
@@ -76,10 +137,12 @@ export class WalletService {
       try {
         await (wcProviderInstance as any).disconnect?.();
       } catch (e) {
+        // Ignore
       }
       try {
         await (wcProviderInstance as any).close?.();
       } catch (e) {
+        // Ignore
       }
 
       try {
@@ -88,6 +151,7 @@ export class WalletService {
           connector.killSession();
         }
       } catch (e) {
+        // Ignore
       }
 
       wcProviderInstance = null;

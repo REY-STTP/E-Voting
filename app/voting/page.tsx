@@ -15,7 +15,6 @@ import { Votes } from '@/types/voting';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialogProvider';
 import { useToast } from '@/components/ui/ToastProvider';
 
-
 export default function VotingPage() {
   const router = useRouter();
   const { confirm } = useConfirmDialog();
@@ -101,13 +100,14 @@ export default function VotingPage() {
     }
   };
 
-  const handleDisconnect = () => {
-    disconnectWallet();
+  const handleDisconnect = async () => {
+    await disconnectWallet();
     showToast({
       type: 'info',
       title: 'Disconnected',
       message: 'Wallet berhasil diputus dari DApp.',
     });
+    // Langsung redirect ke landing page setelah disconnect
     router.push('/');
   };
 

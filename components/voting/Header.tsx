@@ -1,5 +1,6 @@
 // components/voting/Header.tsx
 import React from 'react';
+import Link from 'next/link';
 import { Vote, LogOut } from 'lucide-react';
 import { CalculationUtils } from '@/lib/utils/calculations';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
@@ -39,7 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <h1 className="text-lg md:text-2xl font-bold text-gray-800 dark:text-slate-100 truncate">
-              <a href="/">E-Voting DApp</a>
+              <Link href="/" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                E-Voting DApp
+              </Link>
             </h1>
           </div>
 

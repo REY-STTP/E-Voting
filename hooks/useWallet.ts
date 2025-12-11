@@ -73,15 +73,26 @@ export const useWallet = () => {
     }
   };
 
-  const connectWallet = async (): Promise<{ address: string; isAdmin: boolean }> => {
+  const connectWallet = async (walletId: string): Promise<{ address: string; isAdmin: boolean }> => {
     const mod = await import("@/lib/web3/wallet");
-    if (!mod?.WalletService || typeof mod.WalletService.connectWithWalletConnect !== "function") {
-      throw new Error(
-        "WalletService.connectWithWalletConnect tidak tersedia pada runtime. Pastikan lib/web3/wallet.ts mengekspor WalletService dengan static method connectWithWalletConnect."
-      );
+    if (!mod?.WalletService) {
+      throw new Error("WalletService tidak tersedia.");
     }
 
-    const acc = await mod.WalletService.connectWithWalletConnect();
+    let acc: string;
+
+    if (walletId === 'walletconnect') {
+      if (typeof mod.WalletService.connectWithWalletConnect !== "function") {
+        throw new Error("WalletConnect tidak tersedia.");
+      }
+      acc = await mod.WalletService.connectWithWalletConnect();
+    } else {
+      // Injected wallet (MetaMask, Phantom, OKX, etc.)
+      if (typeof mod.WalletService.connectInjected !== "function") {
+        throw new Error("Injected wallet connection tidak tersedia.");
+      }
+      acc = await mod.WalletService.connectInjected(walletId);
+    }
 
     const res = await fetch("/api/auth/login", {
       method: "POST",
@@ -110,6 +121,13 @@ export const useWallet = () => {
   };
 
   const disconnectWallet = async () => {
+    // Clear local state first
+    setAccount("");
+    setIsConnected(false);
+    setHasVoted(false);
+    setIsAdmin(false);
+
+    // Then logout from server
     await fetch("/api/auth/logout", { method: "POST" });
 
     try {
@@ -120,11 +138,6 @@ export const useWallet = () => {
     } catch (err) {
       console.error("Error disconnecting wallet provider (dynamic import):", err);
     }
-
-    setAccount("");
-    setIsConnected(false);
-    setHasVoted(false);
-    setIsAdmin(false);
   };
 
   return {
