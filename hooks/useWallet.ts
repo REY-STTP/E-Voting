@@ -4,82 +4,116 @@ import { VotingService } from "@/lib/web3/voting";
 import { WalletService } from "@/lib/web3/wallet";
 
 export const useWallet = () => {
-  const [account, setAccount] = useState<string>("");
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [hasVoted, setHasVoted] = useState<boolean>(false);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isInitializing, setIsInitializing] = useState<boolean>(true);
-  const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState<boolean>(false);
-  const [networkError, setNetworkError] = useState<string>("");
+  const [account, setAccount] = useState("");
+  const [isConnected, setIsConnected] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isWalletInstalled, setIsWalletInstalled] = useState(false);
+  const [networkError, setNetworkError] = useState("");
 
   useEffect(() => {
-    (async () => {
-      try {
-        if (WalletService && typeof WalletService.isMetaMaskInstalled === "function") {
-          try {
-            const installed = WalletService.isMetaMaskInstalled();
-            setIsMetaMaskInstalled(Boolean(installed));
-          } catch {
-            const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
-            setIsMetaMaskInstalled(Boolean(installed));
-          }
-        } else {
-          const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
-          setIsMetaMaskInstalled(Boolean(installed));
-        }
-      } catch (e) {
-        const installed = typeof window !== "undefined" && !!(window as any).ethereum && !!(window as any).ethereum.isMetaMask;
-        setIsMetaMaskInstalled(Boolean(installed));
-      }
-
-      initSession();
-    })();
-
+    setIsWalletInstalled(WalletService.isInjectedInstalled());
+    initSession();
   }, []);
 
-  const initSession = async (retryCount = 0) => {
+  const initSession = async (retry = 0) => {
     try {
       const res = await fetch("/api/auth/session", {
-        cache: 'no-store',
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
+        credentials: "include",
+        cache: "no-store",
       });
-      
+
       const data = await res.json();
 
       if (data?.address) {
-        setAccount(data.address);
+        const addr = data.address.toLowerCase();
+
+        setAccount(addr);
         setIsConnected(true);
         setIsAdmin(Boolean(data.isAdmin));
+
         try {
-          const voted = await VotingService.hasVoted(data.address);
+          const voted = await VotingService.hasVoted(addr);
           setHasVoted(voted);
-        } catch (err) {
-          console.error("Error checking hasVoted from session:", err);
+        } catch {
           setHasVoted(false);
         }
       } else {
-        setAccount("");
-        setIsConnected(false);
-        setHasVoted(false);
-        setIsAdmin(false);
+        resetState();
       }
     } catch (err) {
-      console.error("Error initializing session:", err);
-      
-      if (retryCount < 3) {
-        setTimeout(() => initSession(retryCount + 1), 1000 * (retryCount + 1));
+      console.error("Init session error:", err);
+      if (retry < 3) {
+        setTimeout(() => initSession(retry + 1), 1000 * (retry + 1));
       } else {
-        setAccount("");
-        setIsConnected(false);
-        setHasVoted(false);
-        setIsAdmin(false);
+        resetState();
       }
     } finally {
       setIsInitializing(false);
     }
+  };
+
+  const connectWallet = async (): Promise<{
+    address: string;
+    isAdmin: boolean;
+  }> => {
+    setNetworkError("");
+
+    if (!WalletService.isInjectedInstalled()) {
+      throw new Error("Wallet tidak terdeteksi");
+    }
+
+    let address: string;
+
+    try {
+      address = await WalletService.connect();
+    } catch (err: any) {
+      if (err.message?.includes("Sepolia")) {
+        setNetworkError(err.message);
+      }
+      throw err;
+    }
+
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address }),
+    });
+
+    const data = await res.json();
+
+    const normalized = address.toLowerCase();
+    const adminFlag = Boolean(data.isAdmin);
+
+    setAccount(normalized);
+    setIsConnected(true);
+    setIsAdmin(adminFlag);
+
+    try {
+      const voted = await VotingService.hasVoted(normalized);
+      setHasVoted(voted);
+    } catch {
+      setHasVoted(false);
+    }
+
+    return { address: normalized, isAdmin: adminFlag };
+  };
+
+  const disconnectWallet = async () => {
+    resetState();
+    setNetworkError("");
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+
+    return;
   };
 
   const checkWalletConnection = async () => {
@@ -88,116 +122,32 @@ export const useWallet = () => {
       const voted = await VotingService.hasVoted(account);
       setHasVoted(voted);
     } catch (err) {
-      console.error("Error checking hasVoted:", err);
-    }
-  };
-
-  const connectWallet = async (walletId: string): Promise<{ address: string; isAdmin: boolean }> => {
-    setNetworkError("");
-    
-    const mod = await import("@/lib/web3/wallet");
-    if (!WalletService) {
-      throw new Error("WalletService tidak tersedia.");
-    }
-
-    let acc: string;
-
-    try {
-      if (walletId === 'walletconnect') {
-        if (typeof WalletService.connectWithWalletConnect !== "function") {
-          throw new Error("WalletConnect tidak tersedia.");
-        }
-        acc = await WalletService.connectWithWalletConnect();
-      } else {
-        if (typeof WalletService.connectInjected !== "function") {
-          throw new Error("Injected wallet connection tidak tersedia.");
-        }
-        acc = await WalletService.connectInjected(walletId);
-      }
-    } catch (error: any) {
-      if (error.message.includes("Sepolia network")) {
-        setNetworkError(error.message);
-      }
-      throw error;
-    }
-
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: acc }),
-    });
-
-    const data = await res.json();
-
-    const normalized = acc.toLowerCase();
-    const adminFlag = Boolean(data.isAdmin);
-
-    setAccount(normalized);
-    setIsConnected(true);
-    setIsAdmin(adminFlag);
-
-    try {
-      const voted = await VotingService.hasVoted(acc);
-      setHasVoted(voted);
-    } catch (err) {
-      console.error("Error checking hasVoted after connect:", err);
-      setHasVoted(false);
-    }
-
-    return { address: normalized, isAdmin: adminFlag };
-  };
-
-  const disconnectWallet = async (shouldNavigate = false) => {
-    setAccount("");
-    setIsConnected(false);
-    setHasVoted(false);
-    setIsAdmin(false);
-    setNetworkError("");
-
-    try {
-      await fetch("/api/auth/logout", { 
-        method: "POST",
-        credentials: 'include'
-      });
-    } catch (err) {
-      console.error("Error during logout API call:", err);
-    }
-
-    try {
-      if (WalletService && typeof WalletService.disconnectWalletConnect === "function") {
-        await WalletService.disconnectWalletConnect();
-      }
-    } catch (err) {
-      console.error("Error disconnecting wallet provider:", err);
-    }
-
-    if (shouldNavigate) {
-      return;
+      console.error("Check voted error:", err);
     }
   };
 
   const forceRefreshSession = async () => {
     try {
       const res = await fetch("/api/auth/session", {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
+        cache: "no-store",
       });
       const data = await res.json();
-      
+
       if (!data?.address) {
-        setAccount("");
-        setIsConnected(false);
-        setIsAdmin(false);
-        setHasVoted(false);
+        resetState();
         return false;
       }
       return true;
-    } catch (error) {
-      console.error("Error refreshing session:", error);
+    } catch {
       return false;
     }
+  };
+
+  const resetState = () => {
+    setAccount("");
+    setIsConnected(false);
+    setIsAdmin(false);
+    setHasVoted(false);
   };
 
   return {
@@ -206,12 +156,14 @@ export const useWallet = () => {
     hasVoted,
     isAdmin,
     isInitializing,
-    isMetaMaskInstalled,
+    isWalletInstalled,
     networkError,
+
     connectWallet,
     disconnectWallet,
     checkWalletConnection,
-    clearNetworkError: () => setNetworkError(""),
     forceRefreshSession,
+
+    clearNetworkError: () => setNetworkError(""),
   };
 };

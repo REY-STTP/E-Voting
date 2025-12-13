@@ -1,4 +1,3 @@
-// app/admin/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -22,13 +21,12 @@ export default function AdminPage() {
   const {
     account,
     isConnected,
-    hasVoted,
     isInitializing,
-    isMetaMaskInstalled,
     disconnectWallet,
   } = useWallet();
 
   const { votes, totalVotes, isLoading } = useVoting(account);
+
   const isAdmin = !!account && isAdminAddress(account);
 
   const leader = useMemo(() => {
@@ -46,7 +44,7 @@ export default function AdminPage() {
 
     if (!bestKey) return null;
 
-    const candidateMeta = CANDIDATES.find((c) => c.id === bestKey);
+    const meta = CANDIDATES.find((c) => c.id === bestKey);
     const percentage = CalculationUtils.getPercentage(
       bestKey,
       votes,
@@ -55,66 +53,55 @@ export default function AdminPage() {
 
     return {
       key: bestKey,
-      name: candidateMeta?.name ?? bestKey,
-      party: candidateMeta?.party ?? '',
+      name: meta?.name ?? bestKey,
+      party: meta?.party ?? '',
       votes: bestVotes,
       percentage,
-      emoji: candidateMeta?.image ?? '🗳️',
+      emoji: meta?.image ?? '🗳️',
     };
   }, [votes, totalVotes]);
 
   useEffect(() => {
     if (isInitializing) return;
 
-    if (!isMetaMaskInstalled) {
-      showToast({
-        type: 'warning',
-        title: 'MetaMask tidak terdeteksi',
-        message:
-          'Untuk mengakses Admin Dashboard, pastikan MetaMask sudah terpasang.',
-      });
+    if (!isConnected || !account) {
       router.replace('/');
       return;
     }
 
     if (!isAdmin) {
+      showToast({
+        type: 'warning',
+        title: 'Akses ditolak',
+        message: 'Halaman ini hanya dapat diakses oleh admin.',
+      });
       router.replace('/');
       return;
     }
 
     showToast({
       type: 'success',
-      title: 'Admin mode',
-      message: 'Anda masuk sebagai admin.',
+      title: 'Admin Mode',
+      message: 'Anda masuk sebagai administrator.',
     });
-  }, [
-    isInitializing,
-    isMetaMaskInstalled,
-    isConnected,
-    isAdmin,
-    router,
-    showToast,
-  ]);
+  }, [isInitializing, isConnected, account, isAdmin, router, showToast]);
 
   const handleDisconnect = async () => {
     if (isLoggingOut) return;
-    
+
     setIsLoggingOut(true);
     try {
-      await disconnectWallet(false);
-      
+      await disconnectWallet();
+
       showToast({
         type: 'info',
         title: 'Disconnected',
-        message: 'Wallet berhasil diputus dari DApp.',
+        message: 'Wallet berhasil diputus.',
       });
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      router.push('/');
-      
-    } catch (error) {
-      console.error('Error during logout:', error);
+
+      router.replace('/');
+    } catch (err) {
+      console.error('Logout error:', err);
       showToast({
         type: 'error',
         title: 'Logout gagal',
@@ -162,38 +149,37 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh Data
-            </button>
-          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+              border border-gray-200 dark:border-slate-700
+              bg-white/80 dark:bg-slate-900/80
+              text-gray-700 dark:text-slate-200
+              hover:bg-gray-50 dark:hover:bg-slate-800"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh Data
+          </button>
         </section>
 
+        
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex items-center gap-4">
+          
+          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg border p-6 flex gap-4">
             <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/40">
-              <span className="text-2xl">📊</span>
+              📊
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400">
                 Total Votes
               </p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-slate-50">
-                {totalVotes}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                Semua suara yang tercatat di kontrak.
-              </p>
+              <p className="text-3xl font-bold">{totalVotes}</p>
             </div>
           </div>
 
-          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-green-100 dark:bg-emerald-900/40">
-              <span className="text-2xl">{leader?.emoji ?? '🗳️'}</span>
+          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg border p-6 flex gap-4">
+            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
+              {leader?.emoji ?? '🗳️'}
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -201,93 +187,55 @@ export default function AdminPage() {
               </p>
               {leader ? (
                 <>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-slate-50">
-                    {leader.name}
-                  </p>
-                  {leader.party && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">
-                      {leader.party}
-                    </p>
-                  )}
-                  <p className="text-xs mt-1 text-emerald-700 dark:text-emerald-300">
+                  <p className="font-semibold">{leader.name}</p>
+                  <p className="text-xs text-emerald-700">
                     {leader.votes} votes ({leader.percentage}%)
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-gray-400 dark:text-slate-500">
-                  Belum ada suara.
-                </p>
+                <p className="text-sm text-gray-400">Belum ada suara</p>
               )}
             </div>
           </div>
 
-          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 flex flex-col justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
-                Network
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-slate-50">
-                Sepolia Testnet
-              </p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                Smart contract voting ter-deploy di jaringan ini.
-              </p>
-            </div>
-            <div className="mt-4 text-xs text-emerald-700 dark:text-emerald-300">
-              <p className="font-semibold">Admin Status: ACTIVE</p>
-            </div>
+          <div className="bg-white/90 dark:bg-slate-900 rounded-xl shadow-lg border p-6">
+            <p className="text-sm text-gray-500 dark:text-slate-400">Network</p>
+            <p className="font-semibold">Sepolia Testnet</p>
+            <p className="text-xs text-emerald-600 mt-2">
+              Admin Status: ACTIVE
+            </p>
           </div>
         </section>
 
-        <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 md:p-8">
-          <div className="flex justify-between items-center mb-6 gap-4">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-slate-50">
-                Hasil Voting per Kandidat
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
-                Data diambil langsung dari smart contract.
-              </p>
-            </div>
-          </div>
+        <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg border p-6 md:p-8">
+          <h2 className="text-xl font-bold mb-6">Hasil Voting</h2>
 
           <div className="space-y-4">
-            {CANDIDATES.map((candidate) => {
+            {CANDIDATES.map((c) => {
               const percentage = CalculationUtils.getPercentage(
-                candidate.id,
+                c.id,
                 votes,
                 totalVotes
               );
 
               return (
-                <div
-                  key={candidate.id}
-                  className="bg-gray-50/80 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700 rounded-lg p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="text-3xl">{candidate.image}</div>
+                <div key={c.id} className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <div className="flex gap-3">
+                      <div className="text-2xl">{c.image}</div>
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-slate-50">
-                          {candidate.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">
-                          {candidate.party}
-                        </p>
+                        <p className="font-semibold">{c.name}</p>
+                        <p className="text-xs text-gray-500">{c.party}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-purple-600 dark:text-purple-300">
-                        {votes[candidate.id]} votes
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
-                        {percentage}% dari total
-                      </p>
+                    <div className="text-right text-sm">
+                      {votes[c.id]} votes ({percentage}%)
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3">
+
+                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded-full">
                     <div
-                      className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all"
+                      className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -297,14 +245,12 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg dark:shadow-slate-950/40 border border-gray-100/70 dark:border-slate-800 p-6 md:p-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-3">
-            Admin Wallet
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-slate-400 mb-2">
-            Hanya wallet ini yang diakui sebagai admin di aplikasi ini.
+        <section className="bg-white/95 dark:bg-slate-900 rounded-xl shadow-lg border p-6">
+          <h3 className="font-semibold mb-2">Admin Wallet</h3>
+          <p className="text-xs text-gray-500 mb-2">
+            Wallet ini memiliki hak admin.
           </p>
-          <div className="font-mono text-sm bg-gray-100 dark:bg-slate-800 px-4 py-3 rounded-lg break-all text-emerald-700 dark:text-emerald-200">
+          <div className="font-mono text-sm bg-gray-100 dark:bg-slate-800 p-3 rounded-lg break-all">
             {account}
           </div>
         </section>

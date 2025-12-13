@@ -1,17 +1,19 @@
-// app/voting/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
 import { Header } from '@/components/voting/Header';
 import { StatsCards } from '@/components/voting/StatsCards';
 import { VotingSection } from '@/components/voting/VotingSection';
 import { ResultsSection } from '@/components/voting/ResultsSection';
 import { InfoSection } from '@/components/voting/InfoSection';
+
 import { useWallet } from '@/hooks/useWallet';
 import { useVoting } from '@/hooks/useVoting';
 import { CANDIDATES } from '@/constants/candidates';
-import { Votes } from '@/types/voting';
+import type { Votes } from '@/types/voting';
+
 import { useConfirmDialog } from '@/components/ui/ConfirmDialogProvider';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -25,10 +27,8 @@ export default function VotingPage() {
     account,
     isConnected,
     hasVoted,
-    disconnectWallet,
     isInitializing,
-    isMetaMaskInstalled,
-    checkWalletConnection,
+    disconnectWallet,
   } = useWallet();
 
   const {
@@ -42,19 +42,13 @@ export default function VotingPage() {
   useEffect(() => {
     if (isInitializing) return;
 
-    if (!isMetaMaskInstalled) {
-      showToast({
-        type: 'warning',
-        title: 'MetaMask tidak terdeteksi',
-        message:
-          'Untuk mengakses halaman voting, pastikan MetaMask sudah terpasang.',
-      });
+    if (!isConnected || !account) {
       router.replace('/');
     }
-  }, [isInitializing, isMetaMaskInstalled, router, showToast]);
+  }, [isInitializing, isConnected, account, router]);
 
   const handleVote = async (candidateId: keyof Votes) => {
-    if (!isConnected) {
+    if (!isConnected || !account) {
       showToast({
         type: 'warning',
         title: 'Wallet belum terhubung',
@@ -75,7 +69,7 @@ export default function VotingPage() {
     const ok = await confirm({
       title: 'Konfirmasi Voting',
       message:
-        'Apakah Anda yakin dengan pilihan kandidat ini? Suara tidak bisa diubah.',
+        'Apakah Anda yakin dengan pilihan kandidat ini? Suara tidak dapat diubah.',
       confirmText: 'Ya, Voting',
       cancelText: 'Batal',
     });
@@ -84,12 +78,11 @@ export default function VotingPage() {
 
     try {
       await castVote(candidateId, account);
-      await checkWalletConnection();
 
       showToast({
         type: 'success',
-        title: 'Vote Berhasil',
-        message: 'Suara Anda berhasil dicatat di Sepolia. 🎉',
+        title: 'Vote berhasil',
+        message: 'Suara Anda berhasil dicatat di blockchain Sepolia.',
       });
     } catch (err: any) {
       showToast({
@@ -97,30 +90,27 @@ export default function VotingPage() {
         title: 'Voting gagal',
         message:
           err?.message ??
-          'Terjadi kesalahan saat voting di blockchain. Silakan coba lagi.',
+          'Terjadi kesalahan saat mengirim transaksi voting.',
       });
     }
   };
 
   const handleDisconnect = async () => {
     if (isLoggingOut) return;
-    
+
     setIsLoggingOut(true);
     try {
-      await disconnectWallet(false);
-      
+      await disconnectWallet();
+
       showToast({
         type: 'info',
         title: 'Disconnected',
-        message: 'Wallet berhasil diputus dari DApp.',
+        message: 'Wallet berhasil diputus.',
       });
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      router.push('/');
-      
+
+      router.replace('/');
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Logout error:', error);
       showToast({
         type: 'error',
         title: 'Logout gagal',
@@ -135,13 +125,17 @@ export default function VotingPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-slate-300">
             Loading voting data...
           </p>
         </div>
       </div>
     );
+  }
+
+  if (!isConnected || !account) {
+    return null;
   }
 
   return (
